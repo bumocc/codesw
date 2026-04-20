@@ -30,12 +30,24 @@
 
 每家供应商同时支持 Anthropic 兼容和 OpenAI 兼容协议端点，codesw 会按客户端所需自动选择。
 
-## 安装
+## 使用
+
+### 直接运行（推荐）
+
+无需安装，每次用最新版：
 
 ```bash
-npm i -g codesw
+npx @bumocc/codesw
+```
+
+后续所有命令里的 `codesw` 都可以换成 `npx @bumocc/codesw`，例如 `npx @bumocc/codesw use my-glm claude-code`。
+
+### 安装后使用
+
+```bash
+npm i -g @bumocc/codesw
 # 或
-yarn global add codesw
+yarn global add @bumocc/codesw
 ```
 
 从源码安装：
@@ -47,8 +59,6 @@ yarn install
 yarn build
 npm link
 ```
-
-## 使用
 
 ### 交互模式
 
