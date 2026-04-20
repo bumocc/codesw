@@ -1,5 +1,5 @@
 {
-  "name": "codesw",
+  "name": "@bumocc/codesw",
   "version": "0.1.0",
   "description": "Switch model providers for Claude Code / OpenCode / OpenClaw / Hermes Agent",
   "main": "dist/index.js",
@@ -15,7 +15,13 @@
     "start": "node dist/index.js",
     "prepublishOnly": "yarn build"
   },
-  "keywords": ["claude-code", "opencode", "openclaw", "hermes-agent", "cli"],
+  "keywords": [
+    "claude-code",
+    "opencode",
+    "openclaw",
+    "hermes-agent",
+    "cli"
+  ],
   "license": "MIT",
   "dependencies": {
     "js-yaml": "^4.1.0",
