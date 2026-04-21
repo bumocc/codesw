@@ -22,11 +22,14 @@ export function applyOpenClaw(profile: Profile, provider: ProviderDef): string {
   const modelId = profile.model ?? ep.defaultModel ?? provider.defaultModel ?? "default";
   const modelRef = `${providerKey}/${modelId}`;
 
+  const allModels = Array.from(new Set([...(provider.models ?? []), modelId]));
+
   cfg.models = cfg.models ?? {};
   cfg.models.providers = cfg.models.providers ?? {};
   cfg.models.providers[providerKey] = {
     baseUrl: ep.baseUrl,
     apiKey: profile.apiKey,
+    models: allModels.map((m) => ({ id: m })),
   };
 
   cfg.agents = cfg.agents ?? {};
@@ -35,7 +38,6 @@ export function applyOpenClaw(profile: Profile, provider: ProviderDef): string {
   cfg.agents.defaults.model.primary = modelRef;
 
   cfg.agents.defaults.models = cfg.agents.defaults.models ?? {};
-  const allModels = Array.from(new Set([...(provider.models ?? []), modelId]));
   for (const m of allModels) {
     const ref = `${providerKey}/${m}`;
     cfg.agents.defaults.models[ref] = { alias: `${provider.displayName} · ${m}` };
