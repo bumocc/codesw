@@ -29,7 +29,7 @@ export function applyOpenClaw(profile: Profile, provider: ProviderDef): string {
   cfg.models.providers[providerKey] = {
     baseUrl: ep.baseUrl,
     apiKey: profile.apiKey,
-    models: allModels.map((m) => ({ id: m })),
+    models: allModels.map((m) => ({ id: m, name: m })),
   };
 
   cfg.agents = cfg.agents ?? {};
