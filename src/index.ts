@@ -15,6 +15,7 @@ ${c.bold("用法:")}
   ${c.cyan("codesw remove")} <profile>        删除 profile
   ${c.cyan("codesw show")} <profile>          查看 profile
   ${c.cyan("codesw use")} <profile> [client]  将 profile 应用到指定客户端（省略则交互选择）
+  ${c.cyan("codesw restore")} [client]        恢复客户端官方配置（移除注入的环境变量）
 
 ${c.bold("支持的客户端:")} ${CLIENTS.map((cli) => c.green(cli.id)).join(", ")}
 ${c.bold("支持的供应商:")} ${PROVIDERS.map((p) => c.green(p.id)).join(", ")}
@@ -128,6 +129,23 @@ async function pickModel(profile: store.Profile, provider: ReturnType<typeof get
   return current || undefined;
 }
 
+async function cmdRestore(clientId?: string): Promise<void> {
+  const candidates = CLIENTS.filter((cli) => cli.restore);
+  let client = clientId ? getClient(clientId) : undefined;
+  if (client && !client.restore) {
+    console.error(c.red(`${client.displayName} 暂不支持恢复官方配置`));
+    process.exit(1);
+  }
+  if (!client) {
+    client = await choose("恢复哪个客户端的官方配置:", candidates, (cli) => `${c.bold(cli.displayName)} ${c.dim(`(${cli.id})`)}`);
+  }
+  const written = client.restore!();
+  const s = store.load();
+  if (s.active && s.active[client.id]) { delete s.active[client.id]; store.save(s); }
+  console.log(c.green(`✓ 已恢复 `) + c.bold(client.displayName) + c.green(` 官方配置`));
+  console.log(c.dim(`  配置文件: ${written}`));
+}
+
 async function cmdUse(profileName: string, clientId?: string): Promise<void> {
   const s = store.load();
   const profile = s.profiles[profileName];
@@ -160,10 +178,12 @@ async function interactive(): Promise<void> {
     profile = await cmdAdd();
   } else {
     const NEW = { name: "<添加新的供应商>", provider: "", apiKey: "" } as store.Profile;
-    const picked = await choose("选择要使用的供应商:", [NEW, ...existing], (p) =>
-      p === NEW
+    const RESTORE = { name: "<恢复客户端官方配置>", provider: "", apiKey: "" } as store.Profile;
+    const picked = await choose("选择要使用的供应商:", [NEW, RESTORE, ...existing], (p) =>
+      p === NEW || p === RESTORE
         ? c.magenta(p.name)
         : `${c.bold(p.name)} ${c.dim(`(${getProvider(p.provider)?.displayName ?? p.provider}${p.model ? ` / ${p.model}` : ""})`)}`);
+    if (picked === RESTORE) { await cmdRestore(); return; }
     profile = picked === NEW ? await cmdAdd() : picked;
   }
   await cmdUse(profile.name);
@@ -189,6 +209,8 @@ async function main(): Promise<void> {
       case "use":
         if (!rest[0]) { usage(); process.exit(1); }
         await cmdUse(rest[0], rest[1]); break;
+      case "restore":
+        await cmdRestore(rest[0]); break;
       case "-h": case "--help": case "help":
         usage(); break;
       default:

@@ -34,3 +34,28 @@ export function applyClaudeCode(profile: Profile, provider: ProviderDef): string
   fs.writeFileSync(file, JSON.stringify(settings, null, 2));
   return file;
 }
+
+const CLAUDE_ENV_KEYS = [
+  "ANTHROPIC_BASE_URL",
+  "ANTHROPIC_AUTH_TOKEN",
+  "ANTHROPIC_API_KEY",
+  "ANTHROPIC_MODEL",
+  "ANTHROPIC_DEFAULT_OPUS_MODEL",
+  "ANTHROPIC_DEFAULT_SONNET_MODEL",
+  "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+  "ANTHROPIC_SMALL_FAST_MODEL",
+];
+
+export function restoreClaudeCode(): string {
+  const file = path.join(os.homedir(), ".claude", "settings.json");
+  if (!fs.existsSync(file)) return file;
+
+  let settings: any = {};
+  try { settings = JSON.parse(fs.readFileSync(file, "utf8")); } catch { settings = {}; }
+  if (settings.env && typeof settings.env === "object") {
+    for (const k of CLAUDE_ENV_KEYS) delete settings.env[k];
+    if (Object.keys(settings.env).length === 0) delete settings.env;
+  }
+  fs.writeFileSync(file, JSON.stringify(settings, null, 2));
+  return file;
+}
