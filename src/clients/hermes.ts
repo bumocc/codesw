@@ -20,18 +20,25 @@ export function applyHermes(profile: Profile, provider: ProviderDef): string {
   }
 
   const modelId = profile.model ?? ep.defaultModel ?? provider.defaultModel ?? "default";
+  const allModels = Array.from(new Set([...(provider.models ?? []), modelId]));
   cfg.model = cfg.model ?? {};
   cfg.model.provider = "custom";
   cfg.model.base_url = ep.baseUrl;
   cfg.model.default = modelId;
   delete cfg.model.model;
 
-  const aliasKey = `codesw-${profile.name}`;
   cfg.model_aliases = cfg.model_aliases ?? {};
   for (const k of Object.keys(cfg.model_aliases)) {
     if (k.startsWith("codesw-")) delete cfg.model_aliases[k];
   }
-  cfg.model_aliases[aliasKey] = {
+  for (const m of allModels) {
+    cfg.model_aliases[`codesw-${profile.name}-${m}`] = {
+      model: m,
+      provider: "custom",
+      base_url: ep.baseUrl,
+    };
+  }
+  cfg.model_aliases[`codesw-${profile.name}`] = {
     model: modelId,
     provider: "custom",
     base_url: ep.baseUrl,

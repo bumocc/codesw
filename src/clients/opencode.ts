@@ -21,6 +21,9 @@ export function applyOpenCode(profile: Profile, provider: ProviderDef): string {
 
   const model = profile.model ?? ep.defaultModel ?? provider.defaultModel ?? "default";
   const key = provider.id;
+  const allModels = Array.from(new Set([...(provider.models ?? []), model]));
+  const models: Record<string, { name: string }> = {};
+  for (const m of allModels) models[m] = { name: m };
 
   cfg.provider[key] = {
     npm: "@ai-sdk/openai-compatible",
@@ -29,9 +32,7 @@ export function applyOpenCode(profile: Profile, provider: ProviderDef): string {
       baseURL: ep.baseUrl,
       apiKey: profile.apiKey,
     },
-    models: {
-      [model]: { name: model },
-    },
+    models,
   };
   cfg.model = `${key}/${model}`;
 

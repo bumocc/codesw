@@ -99,12 +99,47 @@ function cmdRemove(name: string): void {
   else { console.error(c.red(`未找到 profile: ${name}`)); process.exit(1); }
 }
 
+async function pickModel(profile: store.Profile, provider: ReturnType<typeof getProvider>): Promise<string | undefined> {
+  if (!provider) return profile.model;
+  const models = provider.models ?? [];
+  const current =
+    profile.model ??
+    provider.defaultModel ??
+    provider.endpoints.anthropic?.defaultModel ??
+    provider.endpoints.openai?.defaultModel ??
+    "";
+  if (models.length === 0) {
+    const m = await ask("模型 ID", current);
+    return m || undefined;
+  }
+  const CUSTOM = "<自定义输入>";
+  const items = [...models, CUSTOM];
+  const curIdx = current ? models.indexOf(current) : -1;
+  console.log(`${c.cyan("?")} ${c.bold("选择模型")}${curIdx >= 0 ? c.dim(`（当前 ${curIdx + 1}: ${current}）`) : ""}:`);
+  items.forEach((m, i) => {
+    const label = m === CUSTOM ? c.magenta(m) : m === current ? c.green(`${m} (当前)`) : m;
+    console.log(`  ${c.yellow(String(i + 1))}) ${label}`);
+  });
+  const raw = await ask("请选择模型序号", curIdx >= 0 ? String(curIdx + 1) : "");
+  const n = parseInt(raw, 10);
+  if (Number.isFinite(n) && n >= 1 && n <= items.length) {
+    return items[n - 1] === CUSTOM ? (await ask("模型 ID", current)) || undefined : items[n - 1];
+  }
+  return current || undefined;
+}
+
 async function cmdUse(profileName: string, clientId?: string): Promise<void> {
   const s = store.load();
   const profile = s.profiles[profileName];
   if (!profile) { console.error(c.red(`未找到 profile: ${profileName}`)); process.exit(1); }
   const provider = getProvider(profile.provider);
   if (!provider) { console.error(c.red(`未知供应商: ${profile.provider}`)); process.exit(1); }
+
+  const chosen = await pickModel(profile, provider);
+  if (chosen && chosen !== profile.model) {
+    profile.model = chosen;
+    store.upsert(profile);
+  }
 
   let client = clientId ? getClient(clientId) : undefined;
   if (!client) {

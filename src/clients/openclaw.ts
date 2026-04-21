@@ -35,7 +35,11 @@ export function applyOpenClaw(profile: Profile, provider: ProviderDef): string {
   cfg.agents.defaults.model.primary = modelRef;
 
   cfg.agents.defaults.models = cfg.agents.defaults.models ?? {};
-  cfg.agents.defaults.models[modelRef] = { alias: provider.displayName };
+  const allModels = Array.from(new Set([...(provider.models ?? []), modelId]));
+  for (const m of allModels) {
+    const ref = `${providerKey}/${m}`;
+    cfg.agents.defaults.models[ref] = { alias: `${provider.displayName} · ${m}` };
+  }
 
   fs.writeFileSync(file, JSON5.stringify(cfg, null, 2));
   return file;
