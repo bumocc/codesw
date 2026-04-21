@@ -14,6 +14,8 @@ import { bumoAi } from "./bumo-ai";
 export { ProviderDef, ProviderEndpoint, ProtocolKind } from "./types";
 
 export const PROVIDERS: ProviderDef[] = [
+  bumoCc,
+  bumoAi,
   zhipu,
   zhipuCoding,
   bailian,
@@ -23,8 +25,6 @@ export const PROVIDERS: ProviderDef[] = [
   minimax,
   kimi,
   kimiCoding,
-  bumoCc,
-  bumoAi,
 ];
 
 export function getProvider(id: string): ProviderDef | undefined {

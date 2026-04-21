@@ -1,7 +1,7 @@
 import { ProviderDef } from "./types";
 
 export const bumoCc: ProviderDef = {
-  id: "bumo-cc",
+  id: "bumo.cc",
   displayName: "不墨 API",
   apiKeyUrl: "https://api.bumo.cc/user/api-keys",
   models: [
@@ -19,6 +19,6 @@ export const bumoCc: ProviderDef = {
   defaultModel: "glm/glm-5.1",
   endpoints: {
     anthropic: { baseUrl: "https://api.bumo.cc" },
-    openai:    { baseUrl: "https://api.bumo.cc/v1" },
+    openai: { baseUrl: "https://api.bumo.cc/v1" },
   },
 };

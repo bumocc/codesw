@@ -1,7 +1,7 @@
 import { ProviderDef } from "./types";
 
 export const bumoAi: ProviderDef = {
-  id: "bumo-ai",
+  id: "bumo.ai",
   displayName: "BUMO API",
   apiKeyUrl: "https://api.bumo.ai/user/api-keys",
   models: [
@@ -19,6 +19,6 @@ export const bumoAi: ProviderDef = {
   defaultModel: "claude-sonnet-4-6",
   endpoints: {
     anthropic: { baseUrl: "https://api.bumo.ai" },
-    openai:    { baseUrl: "https://api.bumo.ai/v1" },
+    openai: { baseUrl: "https://api.bumo.ai/v1" },
   },
 };

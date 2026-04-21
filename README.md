@@ -6,28 +6,28 @@
 
 ## 支持的客户端
 
-| 客户端 | 配置文件 |
-| --- | --- |
-| [Claude Code](https://docs.claude.com/en/docs/claude-code) | `~/.claude/settings.json` |
-| [OpenCode](https://opencode.ai/) | `~/.config/opencode/opencode.json` |
-| [OpenClaw](https://openclaw.ai/) | `~/.openclaw/openclaw.json` |
-| [Hermes Agent](https://hermes-agent.nousresearch.com/) | `~/.hermes/config.yaml` + `~/.hermes/.env` |
+| 客户端                                                     | 配置文件                                   |
+| ---------------------------------------------------------- | ------------------------------------------ |
+| [Claude Code](https://docs.claude.com/en/docs/claude-code) | `~/.claude/settings.json`                  |
+| [OpenCode](https://opencode.ai/)                           | `~/.config/opencode/opencode.json`         |
+| [OpenClaw](https://openclaw.ai/)                           | `~/.openclaw/openclaw.json`                |
+| [Hermes Agent](https://hermes-agent.nousresearch.com/)     | `~/.hermes/config.yaml` + `~/.hermes/.env` |
 
 ## 支持的供应商
 
-| id | 名称 | 默认模型 |
-| --- | --- | --- |
-| `zhipu` | 智谱 AI (GLM) | `glm-5.1` |
-| `zhipu-coding` | 智谱 AI Coding Plan | `glm-5.1` |
-| `bailian` | 百炼 API | `glm-5.1` |
-| `bailian-coding` | 百炼 Coding Plan | `glm-5` |
-| `volcengine` | 火山方舟 API | `doubao-seed-2.0-code` |
-| `volcengine-coding` | 火山方舟 Coding Plan | `kimi-k2.5` |
-| `minimax` | MiniMax | `MiniMax-M2` |
-| `kimi` | Kimi API | `kimi-k2.6` |
-| `kimi-coding` | Kimi Coding Plan | `kimi-for-coding` |
-| `bumo-cc` | [不墨 API](https://bumo.cc/docs/api/) | `glm/glm-5.1` |
-| `bumo-ai` | [BUMO API](https://bumo.ai/docs/api/) | `claude-sonnet-4-6` |
+| id                  | 名称                             | 默认模型               |
+| ------------------- | -------------------------------- | ---------------------- |
+| `bumo-cc`           | [不墨 API](https://api.bumo.cc/) | `glm/glm-5.1`          |
+| `bumo-ai`           | [BUMO API](https://api.bumo.ai/) | `claude-sonnet-4-6`    |
+| `zhipu`             | 智谱 AI (GLM)                    | `glm-5.1`              |
+| `zhipu-coding`      | 智谱 AI Coding Plan              | `glm-5.1`              |
+| `bailian`           | 百炼 API                         | `glm-5.1`              |
+| `bailian-coding`    | 百炼 Coding Plan                 | `glm-5`                |
+| `volcengine`        | 火山方舟 API                     | `doubao-seed-2.0-code` |
+| `volcengine-coding` | 火山方舟 Coding Plan             | `kimi-k2.5`            |
+| `minimax`           | MiniMax                          | `MiniMax-M2`           |
+| `kimi`              | Kimi API                         | `kimi-k2.6`            |
+| `kimi-coding`       | Kimi Coding Plan                 | `kimi-for-coding`      |
 
 每家供应商同时支持 Anthropic 兼容和 OpenAI 兼容协议端点，codesw 会按客户端所需自动选择。
 
@@ -58,6 +58,7 @@ codesw
 ```
 
 会引导你：
+
 1. 选择 / 新建一个 profile（供应商 + API Key + 模型）
 2. 选择要应用到哪个 Code 客户端
 
