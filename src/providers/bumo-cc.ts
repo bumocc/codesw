@@ -9,6 +9,7 @@ export const bumoCc: ProviderDef = {
     "glm/glm-5",
     "glm/glm-4.7",
     "glm/glm-4.5-air",
+    "kimi/kimi-k2.6",
     "kimi/kimi-k2.5",
     "deepseek/deepseek-v3.2",
     "qwen/qwen3.6-plus",

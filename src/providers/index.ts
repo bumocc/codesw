@@ -1,5 +1,6 @@
 import { ProviderDef } from "./types";
 import { zhipu } from "./zhipu";
+import { zhipuCoding } from "./zhipu-coding";
 import { bailian } from "./bailian";
 import { bailianCoding } from "./bailian-coding";
 import { volcengine } from "./volcengine";
@@ -14,6 +15,7 @@ export { ProviderDef, ProviderEndpoint, ProtocolKind } from "./types";
 
 export const PROVIDERS: ProviderDef[] = [
   zhipu,
+  zhipuCoding,
   bailian,
   bailianCoding,
   volcengine,

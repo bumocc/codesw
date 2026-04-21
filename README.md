@@ -17,32 +17,21 @@
 
 | id | 名称 | 默认模型 |
 | --- | --- | --- |
-| `zhipu` | 智谱 AI (GLM) | `glm-4.6` |
+| `zhipu` | 智谱 AI (GLM) | `glm-5.1` |
+| `zhipu-coding` | 智谱 AI Coding Plan | `glm-5.1` |
 | `bailian` | 百炼 API | `glm-5.1` |
 | `bailian-coding` | 百炼 Coding Plan | `glm-5` |
 | `volcengine` | 火山方舟 API | `doubao-seed-2.0-code` |
 | `volcengine-coding` | 火山方舟 Coding Plan | `kimi-k2.5` |
 | `minimax` | MiniMax | `MiniMax-M2` |
-| `kimi` | Kimi API | `kimi-k2.5` |
+| `kimi` | Kimi API | `kimi-k2.6` |
 | `kimi-coding` | Kimi Coding Plan | `kimi-for-coding` |
 | `bumo-cc` | [不墨 API](https://bumo.cc/docs/api/) | `glm/glm-5.1` |
 | `bumo-ai` | [BUMO API](https://bumo.ai/docs/api/) | `claude-sonnet-4-6` |
 
 每家供应商同时支持 Anthropic 兼容和 OpenAI 兼容协议端点，codesw 会按客户端所需自动选择。
 
-## 使用
-
-### 直接运行（推荐）
-
-无需安装，每次用最新版：
-
-```bash
-npx @bumocc/codesw
-```
-
-后续所有命令里的 `codesw` 都可以换成 `npx @bumocc/codesw`，例如 `npx @bumocc/codesw use my-glm claude-code`。
-
-### 安装后使用
+## 安装
 
 ```bash
 npm i -g @bumocc/codesw
@@ -59,6 +48,8 @@ yarn install
 yarn build
 npm link
 ```
+
+## 使用
 
 ### 交互模式
 
