@@ -12,6 +12,8 @@ export const bumoCc: ProviderDef = {
     "kimi/kimi-k2.6",
     "kimi/kimi-k2.5",
     "deepseek/deepseek-v3.2",
+    "deepseek/deepseek-v4-flash",
+    "deepseek/deepseek-v4-pro",
     "qwen/qwen3.6-plus",
     "minimax/MiniMax-M2.7",
     "minimax/MiniMax-M2.7-highspeed",
