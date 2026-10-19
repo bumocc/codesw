@@ -3,6 +3,7 @@ import { ProviderDef } from "./types";
 export const kimi: ProviderDef = {
   id: "kimi",
   displayName: "Kimi API",
+  displayNameEn: "Kimi API",
   apiKeyUrl: "https://platform.moonshot.cn/",
   models: ["kimi-k2.6", "kimi-k2.5"],
   defaultModel: "kimi-k2.6",

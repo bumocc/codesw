@@ -1,6 +1,6 @@
 {
   "name": "@bumocc/codesw",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "description": "Switch model providers for Claude Code / OpenCode / OpenClaw / Hermes Agent",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -23,6 +23,14 @@
     "cli"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bumocc/codesw.git"
+  },
+  "homepage": "https://github.com/bumocc/codesw#readme",
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
     "js-yaml": "^4.1.0",
     "json5": "^2.2.3"

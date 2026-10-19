@@ -2,51 +2,46 @@ import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
 import * as yaml from "js-yaml";
-import { Profile } from "../profiles";
 import { ProviderDef } from "../providers";
+import { t } from "../i18n";
+import { ApplyInput, CurrentConfig, readJson } from "./shared";
 
-export function applyHermes(profile: Profile, provider: ProviderDef): string {
+const DIR = path.join(os.homedir(), ".hermes");
+const CFG_FILE = path.join(DIR, "config.yaml");
+const ENV_FILE = path.join(DIR, ".env");
+
+export function applyHermes(input: ApplyInput, provider: ProviderDef, models: string[]): string {
   const ep = provider.endpoints.openai ?? provider.endpoints.anthropic;
-  if (!ep) throw new Error(`${provider.displayName} 没有可用端点`);
+  if (!ep) throw new Error(t.noEndpoint(provider.displayName));
 
-  const dir = path.join(os.homedir(), ".hermes");
-  const cfgFile = path.join(dir, "config.yaml");
-  const envFile = path.join(dir, ".env");
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  fs.mkdirSync(DIR, { recursive: true });
+  const cfg: any = readJson(CFG_FILE, (s) => yaml.load(s));
 
-  let cfg: any = {};
-  if (fs.existsSync(cfgFile)) {
-    try { cfg = yaml.load(fs.readFileSync(cfgFile, "utf8")) ?? {}; } catch { cfg = {}; }
-  }
-
-  const modelId = profile.model ?? ep.defaultModel ?? provider.defaultModel ?? "default";
-  const allModels = Array.from(new Set([...(provider.models ?? []), modelId]));
   cfg.model = cfg.model ?? {};
   cfg.model.provider = "custom";
   cfg.model.base_url = ep.baseUrl;
-  cfg.model.default = modelId;
+  cfg.model.default = input.model;
   delete cfg.model.model;
 
+  // 别名统一以 codesw- 开头，每次应用前整体替换
   cfg.model_aliases = cfg.model_aliases ?? {};
   for (const k of Object.keys(cfg.model_aliases)) {
     if (k.startsWith("codesw-")) delete cfg.model_aliases[k];
   }
-  for (const m of allModels) {
-    cfg.model_aliases[`codesw-${profile.name}-${m}`] = {
-      model: m,
-      provider: "custom",
-      base_url: ep.baseUrl,
-    };
+  for (const m of new Set([...models, input.model])) {
+    cfg.model_aliases[`codesw-${m.replace(/\//g, "-")}`] = { model: m, provider: "custom", base_url: ep.baseUrl };
   }
-  cfg.model_aliases[`codesw-${profile.name}`] = {
-    model: modelId,
-    provider: "custom",
-    base_url: ep.baseUrl,
-  };
 
-  fs.writeFileSync(cfgFile, yaml.dump(cfg, { lineWidth: 120 }));
-  writeEnvKey(envFile, "OPENAI_API_KEY", profile.apiKey);
-  return cfgFile;
+  fs.writeFileSync(CFG_FILE, yaml.dump(cfg, { lineWidth: 120 }));
+  writeEnvKey(ENV_FILE, "OPENAI_API_KEY", input.apiKey);
+  return CFG_FILE;
+}
+
+export function currentHermes(): CurrentConfig | undefined {
+  if (!fs.existsSync(CFG_FILE)) return undefined;
+  const cfg = readJson(CFG_FILE, (s) => yaml.load(s));
+  if (!cfg.model?.default && !cfg.model?.base_url) return undefined;
+  return { baseUrl: cfg.model?.base_url, model: cfg.model?.default };
 }
 
 function writeEnvKey(file: string, key: string, value: string): void {

@@ -1,18 +1,22 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
+import { getProvider } from "./providers";
 
-export interface Profile {
-  name: string;
-  provider: string;
+/** 每个供应商保存一份：Key 只输一次，并记住上次选的模型 */
+export interface SavedKey {
   apiKey: string;
   model?: string;
-  smallModel?: string;
 }
 
 export interface Store {
-  profiles: Record<string, Profile>;
-  /** name -> last applied profile for each client */
+  version: 2;
+  keys: Record<string, SavedKey>;
+}
+
+/** 0.1.x 的旧格式：按用户自起名的 profile 保存 */
+interface LegacyStore {
+  profiles?: Record<string, { name: string; provider: string; apiKey: string; model?: string }>;
   active?: Record<string, string>;
 }
 
@@ -23,15 +27,30 @@ function ensureDir(): void {
   if (!fs.existsSync(DIR)) fs.mkdirSync(DIR, { recursive: true, mode: 0o700 });
 }
 
+function migrate(old: LegacyStore): Store {
+  const keys: Record<string, SavedKey> = {};
+  const profiles = Object.values(old.profiles ?? {});
+  // 同一供应商有多个 profile 时，优先保留正在被客户端使用的那个
+  const activeNames = new Set(Object.values(old.active ?? {}));
+  profiles.sort((a, b) => Number(activeNames.has(a.name)) - Number(activeNames.has(b.name)));
+  for (const p of profiles) {
+    if (!p?.apiKey) continue;
+    const id = getProvider(p.provider)?.id ?? p.provider;
+    keys[id] = { apiKey: p.apiKey, model: p.model };
+  }
+  return { version: 2, keys };
+}
+
 export function load(): Store {
-  if (!fs.existsSync(FILE)) return { profiles: {} };
+  if (!fs.existsSync(FILE)) return { version: 2, keys: {} };
   try {
-    const raw = fs.readFileSync(FILE, "utf8");
-    const data = JSON.parse(raw) as Store;
-    if (!data.profiles) data.profiles = {};
-    return data;
+    const data = JSON.parse(fs.readFileSync(FILE, "utf8"));
+    if (data?.version === 2) return { version: 2, keys: data.keys ?? {} };
+    const migrated = migrate(data);
+    save(migrated);
+    return migrated;
   } catch {
-    return { profiles: {} };
+    return { version: 2, keys: {} };
   }
 }
 
@@ -40,30 +59,26 @@ export function save(store: Store): void {
   fs.writeFileSync(FILE, JSON.stringify(store, null, 2), { mode: 0o600 });
 }
 
-export function upsert(profile: Profile): void {
+export function getKey(providerId: string): SavedKey | undefined {
+  return load().keys[providerId];
+}
+
+export function setKey(providerId: string, value: SavedKey): void {
   const s = load();
-  s.profiles[profile.name] = profile;
+  s.keys[providerId] = value;
   save(s);
 }
 
-export function remove(name: string): boolean {
+export function removeKey(providerId: string): boolean {
   const s = load();
-  if (!s.profiles[name]) return false;
-  delete s.profiles[name];
-  if (s.active) {
-    for (const k of Object.keys(s.active)) {
-      if (s.active[k] === name) delete s.active[k];
-    }
-  }
+  if (!s.keys[providerId]) return false;
+  delete s.keys[providerId];
   save(s);
   return true;
 }
 
-export function markActive(client: string, profile: string): void {
-  const s = load();
-  if (!s.active) s.active = {};
-  s.active[client] = profile;
-  save(s);
+export function maskKey(key: string): string {
+  return key.length > 10 ? `${key.slice(0, 5)}…${key.slice(-4)}` : "****";
 }
 
 export const profilesPath = FILE;

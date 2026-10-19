@@ -1,38 +1,32 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
-import { Profile } from "../profiles";
 import { ProviderDef } from "../providers";
+import { t } from "../i18n";
+import { ApplyInput, CurrentConfig, readJson } from "./shared";
 
-export function applyClaudeCode(profile: Profile, provider: ProviderDef): string {
+const FILE = path.join(os.homedir(), ".claude", "settings.json");
+
+export function applyClaudeCode(input: ApplyInput, provider: ProviderDef): string {
   const ep = provider.endpoints.anthropic;
-  if (!ep) throw new Error(`${provider.displayName} 未提供 Anthropic 兼容端点，无法用于 Claude Code`);
+  if (!ep) throw new Error(t.noAnthropic(provider.displayName));
 
-  const dir = path.join(os.homedir(), ".claude");
-  const file = path.join(dir, "settings.json");
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-
-  let settings: any = {};
-  if (fs.existsSync(file)) {
-    try { settings = JSON.parse(fs.readFileSync(file, "utf8")); } catch { settings = {}; }
-  }
+  fs.mkdirSync(path.dirname(FILE), { recursive: true });
+  const settings: any = readJson(FILE);
   if (!settings.env || typeof settings.env !== "object") settings.env = {};
+  for (const k of CLAUDE_ENV_KEYS) delete settings.env[k];
 
-  const model = profile.model ?? ep.defaultModel ?? provider.defaultModel;
-  const small = profile.smallModel ?? ep.smallModel;
-
+  const small = provider.smallModel ?? ep.smallModel ?? input.model;
   settings.env.ANTHROPIC_BASE_URL = ep.baseUrl;
-  settings.env.ANTHROPIC_AUTH_TOKEN = profile.apiKey;
-  if (model) {
-    settings.env.ANTHROPIC_MODEL = model;
-    settings.env.ANTHROPIC_DEFAULT_OPUS_MODEL = model;
-    settings.env.ANTHROPIC_DEFAULT_SONNET_MODEL = model;
-    settings.env.ANTHROPIC_DEFAULT_HAIKU_MODEL = small ?? model;
-  }
-  if (small) settings.env.ANTHROPIC_SMALL_FAST_MODEL = small;
+  settings.env.ANTHROPIC_AUTH_TOKEN = input.apiKey;
+  settings.env.ANTHROPIC_MODEL = input.model;
+  settings.env.ANTHROPIC_DEFAULT_OPUS_MODEL = input.model;
+  settings.env.ANTHROPIC_DEFAULT_SONNET_MODEL = input.model;
+  settings.env.ANTHROPIC_DEFAULT_HAIKU_MODEL = small;
+  settings.env.ANTHROPIC_SMALL_FAST_MODEL = small;
 
-  fs.writeFileSync(file, JSON.stringify(settings, null, 2));
-  return file;
+  fs.writeFileSync(FILE, JSON.stringify(settings, null, 2));
+  return FILE;
 }
 
 const CLAUDE_ENV_KEYS = [
@@ -47,15 +41,20 @@ const CLAUDE_ENV_KEYS = [
 ];
 
 export function restoreClaudeCode(): string {
-  const file = path.join(os.homedir(), ".claude", "settings.json");
-  if (!fs.existsSync(file)) return file;
-
-  let settings: any = {};
-  try { settings = JSON.parse(fs.readFileSync(file, "utf8")); } catch { settings = {}; }
+  if (!fs.existsSync(FILE)) return FILE;
+  const settings: any = readJson(FILE);
   if (settings.env && typeof settings.env === "object") {
     for (const k of CLAUDE_ENV_KEYS) delete settings.env[k];
     if (Object.keys(settings.env).length === 0) delete settings.env;
   }
-  fs.writeFileSync(file, JSON.stringify(settings, null, 2));
-  return file;
+  fs.writeFileSync(FILE, JSON.stringify(settings, null, 2));
+  return FILE;
+}
+
+export function currentClaudeCode(): CurrentConfig | undefined {
+  if (!fs.existsSync(FILE)) return undefined;
+  const env = readJson(FILE).env ?? {};
+  // 没有自定义地址就是官方账号
+  if (!env.ANTHROPIC_BASE_URL) return { official: true };
+  return { baseUrl: env.ANTHROPIC_BASE_URL, model: env.ANTHROPIC_MODEL };
 }

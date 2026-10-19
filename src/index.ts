@@ -1,192 +1,236 @@
 #!/usr/bin/env node
-import { CLIENTS, getClient } from "./clients";
-import { PROVIDERS, getProvider } from "./providers";
-import { ask, askSecret, choose } from "./prompt";
+import * as fs from "fs";
+import * as os from "os";
+import * as path from "path";
+import { CLIENTS, ClientDef, getClient, isInstalled } from "./clients";
+import { PROVIDERS, ProviderDef, defaultModelOf, getProvider, loadModels, matchBaseUrl } from "./providers";
+import { Choice, ask, askSecret, select, strWidth, withSpinner } from "./prompt";
 import * as store from "./profiles";
 import { c } from "./color";
+import { isZh, t } from "./i18n";
 
-function usage(): void {
-  console.log(`${c.bold("codesw")} ${c.dim("— 切换 Code 客户端的模型供应商")}
+const RESTORE = Symbol("restore");
+const CUSTOM = Symbol("custom");
 
-${c.bold("用法:")}
-  ${c.cyan("codesw")}                         交互模式（创建/选择 profile，应用到某个客户端）
-  ${c.cyan("codesw list")}                    列出已保存 profile
-  ${c.cyan("codesw add")}                     新建 profile（交互）
-  ${c.cyan("codesw remove")} <profile>        删除 profile
-  ${c.cyan("codesw show")} <profile>          查看 profile
-  ${c.cyan("codesw use")} <profile> [client]  将 profile 应用到指定客户端（省略则交互选择）
-  ${c.cyan("codesw restore")} [client]        恢复客户端官方配置（移除注入的环境变量）
+const tilde = (p: string) => (p.startsWith(os.homedir()) ? "~" + p.slice(os.homedir().length) : p);
+const hostOf = (u: string) => { try { return new URL(u).host; } catch { return u; } };
 
-${c.bold("支持的客户端:")} ${CLIENTS.map((cli) => c.green(cli.id)).join(", ")}
-${c.bold("支持的供应商:")} ${PROVIDERS.map((p) => c.green(p.id)).join(", ")}
-
-${c.dim(`Profile 存储: ~/.codesw/profiles.json`)}
-`);
+function version(): string {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf8")).version;
+  } catch {
+    return "";
+  }
 }
 
-async function cmdAdd(): Promise<store.Profile> {
-  const provider = await choose("选择供应商:", PROVIDERS, (p) => `${c.bold(p.displayName)} ${c.dim(`(${p.id})`)}`);
-  const suggested = provider.id;
-  const name = (await ask("Profile 名称", suggested)) || suggested;
-  if (provider.apiKeyUrl) console.log(c.dim(`获取 API Key: ${provider.apiKeyUrl}`));
-  const apiKey = await askSecret("API Key");
-  if (!apiKey) throw new Error("API Key 不能为空");
-  const defModel =
-    provider.defaultModel ??
-    provider.endpoints.anthropic?.defaultModel ??
-    provider.endpoints.openai?.defaultModel ??
-    "";
-  let model = "";
-  if (provider.models && provider.models.length > 0) {
-    const CUSTOM = "<自定义输入>";
-    const items = [...provider.models, CUSTOM];
-    const defIdx = defModel ? provider.models.indexOf(defModel) : -1;
-    console.log(`${c.cyan("?")} ${c.bold("可选模型")}${defIdx >= 0 ? c.dim(`（默认 ${defIdx + 1}: ${defModel}）`) : ""}:`);
-    items.forEach((m, i) => {
-      const label = m === CUSTOM ? c.magenta(m) : m === defModel ? c.green(`${m} (默认)`) : m;
-      console.log(`  ${c.yellow(String(i + 1))}) ${label}`);
-    });
-    const raw = await ask("请选择模型序号", defIdx >= 0 ? String(defIdx + 1) : "");
-    const n = parseInt(raw, 10);
-    if (Number.isFinite(n) && n >= 1 && n <= items.length) {
-      model = items[n - 1] === CUSTOM ? await ask("模型 ID", defModel) : items[n - 1];
-    } else {
-      model = defModel;
-    }
-  } else {
-    model = await ask("模型 ID", defModel);
-  }
-  const smallModel = await ask("小模型 ID (可选，回车跳过)", "");
-
-  const profile: store.Profile = {
-    name,
-    provider: provider.id,
-    apiKey,
-    model: model || undefined,
-    smallModel: smallModel || undefined,
+/** 客户端当前状态的一句话描述；empty 表示未安装 / 未配置 */
+function describe(client: ClientDef): { text: string; warn?: string; empty?: boolean } {
+  const cur = client.current();
+  if (!cur) return { text: isInstalled(client) ? t.notConfigured : t.notInstalled, empty: true };
+  if (cur.official) return { text: t.official };
+  const m = matchBaseUrl(cur.baseUrl);
+  const name = m ? m.provider.displayName : cur.baseUrl ? hostOf(cur.baseUrl) : t.custom;
+  return {
+    text: cur.model ? `${name} · ${cur.model}` : name,
+    warn: m?.legacy ? t.legacyWarn : undefined,
   };
-  store.upsert(profile);
-  console.log(c.green(`✓ 已保存 profile: ${name}`));
-  return profile;
 }
 
-function cmdList(): void {
-  const s = store.load();
-  const names = Object.keys(s.profiles);
-  if (!names.length) {
-    console.log(c.dim("暂无 profile。运行 ") + c.cyan("codesw add") + c.dim(" 创建一个。"));
-    return;
-  }
-  for (const n of names) {
-    const p = s.profiles[n];
-    const prov = getProvider(p.provider);
-    const active = s.active ? Object.entries(s.active).filter(([, v]) => v === n).map(([k]) => k) : [];
-    const mark = active.length ? " " + c.green(`[active: ${active.join(", ")}]`) : "";
-    const model = p.model ? c.dim(` / ${p.model}`) : "";
-    console.log(`  ${c.yellow("•")} ${c.bold(n)}  ${c.dim("→")}  ${prov?.displayName ?? p.provider}${model}${mark}`);
-  }
+/** 客户端当前在用的供应商 */
+function currentProvider(client: ClientDef): ProviderDef | undefined {
+  return matchBaseUrl(client.current()?.baseUrl)?.provider;
 }
 
-function cmdShow(name: string): void {
-  const s = store.load();
-  const p = s.profiles[name];
-  if (!p) { console.error(c.red(`未找到 profile: ${name}`)); process.exit(1); }
-  const masked = p.apiKey.length > 8 ? p.apiKey.slice(0, 4) + "..." + p.apiKey.slice(-4) : "****";
-  console.log(JSON.stringify({ ...p, apiKey: masked }, null, 2));
+function supports(client: ClientDef, p: ProviderDef): boolean {
+  return client.id === "claude-code" ? !!p.endpoints.anthropic : true;
 }
 
-function cmdRemove(name: string): void {
-  if (store.remove(name)) console.log(c.green(`✓ 已删除 profile: ${name}`));
-  else { console.error(c.red(`未找到 profile: ${name}`)); process.exit(1); }
-}
-
-async function pickModel(profile: store.Profile, provider: ReturnType<typeof getProvider>): Promise<string | undefined> {
-  if (!provider) return profile.model;
-  const models = provider.models ?? [];
-  const current =
-    profile.model ??
-    provider.defaultModel ??
-    provider.endpoints.anthropic?.defaultModel ??
-    provider.endpoints.openai?.defaultModel ??
-    "";
-  if (models.length === 0) {
-    const m = await ask("模型 ID", current);
-    return m || undefined;
-  }
-  const CUSTOM = "<自定义输入>";
-  const items = [...models, CUSTOM];
-  const curIdx = current ? models.indexOf(current) : -1;
-  console.log(`${c.cyan("?")} ${c.bold("选择模型")}${curIdx >= 0 ? c.dim(`（当前 ${curIdx + 1}: ${current}）`) : ""}:`);
-  items.forEach((m, i) => {
-    const label = m === CUSTOM ? c.magenta(m) : m === current ? c.green(`${m} (当前)`) : m;
-    console.log(`  ${c.yellow(String(i + 1))}) ${label}`);
+async function pickClient(): Promise<ClientDef> {
+  const choices: Choice<ClientDef>[] = CLIENTS.map((cli) => {
+    const d = describe(cli);
+    return { label: cli.displayName, hint: d.warn ? `${d.text} · ${d.warn}` : d.text, value: cli };
   });
-  const raw = await ask("请选择模型序号", curIdx >= 0 ? String(curIdx + 1) : "");
-  const n = parseInt(raw, 10);
-  if (Number.isFinite(n) && n >= 1 && n <= items.length) {
-    return items[n - 1] === CUSTOM ? (await ask("模型 ID", current)) || undefined : items[n - 1];
-  }
-  return current || undefined;
+  const firstInstalled = Math.max(0, CLIENTS.findIndex((cli) => isInstalled(cli)));
+  return select(t.askClient, choices, firstInstalled);
 }
 
-async function cmdRestore(clientId?: string): Promise<void> {
-  const candidates = CLIENTS.filter((cli) => cli.restore);
-  let client = clientId ? getClient(clientId) : undefined;
-  if (client && !client.restore) {
-    console.error(c.red(`${client.displayName} 暂不支持恢复官方配置`));
-    process.exit(1);
+async function pickProvider(client: ClientDef): Promise<ProviderDef | typeof RESTORE> {
+  const using = currentProvider(client);
+  const saved = store.load().keys;
+  const list = PROVIDERS.filter((p) => supports(client, p));
+  const choices: Choice<ProviderDef | typeof RESTORE>[] = list.map((p) => {
+    const tags = [p === using ? t.inUse : "", saved[p.id] ? t.keySaved : "", p.desc ?? ""].filter(Boolean);
+    return { label: p.displayName, hint: tags.join(" · "), value: p };
+  });
+  if (client.restore) {
+    choices.push({ label: "──────", value: RESTORE, separator: true });
+    choices.push({ label: t.restoreLabel, hint: t.restoreHint(client.displayName), value: RESTORE });
   }
-  if (!client) {
-    client = await choose("恢复哪个客户端的官方配置:", candidates, (cli) => `${c.bold(cli.displayName)} ${c.dim(`(${cli.id})`)}`);
-  }
-  const written = client.restore!();
-  const s = store.load();
-  if (s.active && s.active[client.id]) { delete s.active[client.id]; store.save(s); }
-  console.log(c.green(`✓ 已恢复 `) + c.bold(client.displayName) + c.green(` 官方配置`));
-  console.log(c.dim(`  配置文件: ${written}`));
+  // 没在用任何供应商时，中文环境默认国内站，其他语言默认国际站
+  const fallback = Math.max(0, list.findIndex((p) => p.id === (isZh ? "bumo.cc" : "bumo.ai")));
+  const initial = using ? list.indexOf(using) : fallback;
+  return select(t.askProvider, choices, initial);
 }
 
-async function cmdUse(profileName: string, clientId?: string): Promise<void> {
-  const s = store.load();
-  const profile = s.profiles[profileName];
-  if (!profile) { console.error(c.red(`未找到 profile: ${profileName}`)); process.exit(1); }
-  const provider = getProvider(profile.provider);
-  if (!provider) { console.error(c.red(`未知供应商: ${profile.provider}`)); process.exit(1); }
-
-  const chosen = await pickModel(profile, provider);
-  if (chosen && chosen !== profile.model) {
-    profile.model = chosen;
-    store.upsert(profile);
+/** 已保存的 Key 直接用，没有才让用户粘贴 */
+async function ensureKey(p: ProviderDef): Promise<string> {
+  const saved = store.getKey(p.id);
+  if (saved?.apiKey) {
+    console.log(`${c.green("✔")} ${c.bold("API Key")} ${c.dim(t.usingSavedKey(store.maskKey(saved.apiKey)))}`);
+    return saved.apiKey;
   }
+  if (p.apiKeyUrl) console.log(c.dim(t.noKeyYet(p.apiKeyUrl)));
+  const key = await askSecret(t.pasteKey(p.displayName), (v) => `API Key ${c.dim(t.keyDone(store.maskKey(v)))}`);
+  if (!key) throw new Error(t.keyCancelled);
+  store.setKey(p.id, { apiKey: key });
+  return key;
+}
 
-  let client = clientId ? getClient(clientId) : undefined;
-  if (!client) {
-    client = await choose("应用到哪个客户端:", CLIENTS, (cli) => `${c.bold(cli.displayName)} ${c.dim(`(${cli.id})`)}`);
+async function pickModel(client: ClientDef, p: ProviderDef, preferred?: string): Promise<{ model: string; all: string[] }> {
+  const list = await withSpinner(t.loadingModels, loadModels(p));
+  if (!list.models.length) {
+    const model = await ask(t.modelId, preferred || defaultModelOf(p));
+    if (!model) throw new Error(t.modelCancelled);
+    return { model, all: [model] };
   }
-  const written = client.apply(profile, provider);
-  store.markActive(client.id, profile.name);
-  console.log(c.green(`✓ 已应用 `) + c.bold(profile.name) + c.green(` → `) + c.bold(client.displayName));
-  console.log(c.dim(`  配置文件: ${written}`));
+  const inUse = currentProvider(client) === p ? client.current()?.model : undefined;
+  const featured = list.models.filter((m) => list.featured.includes(m));
+  const ordered = [...featured, ...list.models.filter((m) => !featured.includes(m))];
+  const choices: Choice<string | typeof CUSTOM>[] = ordered.map((m) => ({
+    label: m,
+    hint: [m === inUse ? t.inUse : "", featured.includes(m) ? t.recommended : ""].filter(Boolean).join(" · "),
+    value: m,
+  }));
+  choices.push({ label: t.customModel, value: CUSTOM });
+
+  const want = [inUse, preferred, defaultModelOf(p), featured[0]].find((m) => m && ordered.includes(m));
+  const picked = await select(t.askModel, choices, want ? ordered.indexOf(want) : 0);
+  if (picked !== CUSTOM) return { model: picked, all: list.models };
+  const model = await ask(t.modelId, inUse ?? preferred);
+  if (!model) throw new Error(t.modelCancelled);
+  return { model, all: list.models };
+}
+
+function applyTo(client: ClientDef, p: ProviderDef, apiKey: string, model: string, all: string[]): void {
+  const file = client.apply({ apiKey, model }, p, all);
+  store.setKey(p.id, { apiKey, model });
+  const [prefix, target] = t.switched(client.displayName, `${p.displayName} · ${model}`);
+  console.log("");
+  console.log(`${c.green("✔")} ${c.bold(prefix)}${c.cyan(c.bold(target))}`);
+  console.log(c.dim(t.writtenTo(tilde(file), client.displayName)));
+}
+
+function restore(client: ClientDef): void {
+  if (!client.restore) throw new Error(t.restoreUnsupported(client.displayName));
+  const file = client.restore();
+  console.log(`${c.green("✔")} ${c.bold(t.restored(client.displayName))}`);
+  console.log(c.dim(t.restoredFile(tilde(file), client.displayName)));
 }
 
 async function interactive(): Promise<void> {
-  const s = store.load();
-  const existing = Object.values(s.profiles);
-  let profile: store.Profile;
-  if (existing.length === 0) {
-    console.log(c.dim("尚无 profile，先创建一个。"));
-    profile = await cmdAdd();
-  } else {
-    const NEW = { name: "<添加新的供应商>", provider: "", apiKey: "" } as store.Profile;
-    const RESTORE = { name: "<恢复客户端官方配置>", provider: "", apiKey: "" } as store.Profile;
-    const picked = await choose("选择要使用的供应商:", [NEW, RESTORE, ...existing], (p) =>
-      p === NEW || p === RESTORE
-        ? c.magenta(p.name)
-        : `${c.bold(p.name)} ${c.dim(`(${getProvider(p.provider)?.displayName ?? p.provider}${p.model ? ` / ${p.model}` : ""})`)}`);
-    if (picked === RESTORE) { await cmdRestore(); return; }
-    profile = picked === NEW ? await cmdAdd() : picked;
+  console.log(`${c.bold("codesw")} ${c.dim(`v${version()} · ${t.tagline}`)}\n`);
+  const client = await pickClient();
+  const p = await pickProvider(client);
+  if (p === RESTORE) return restore(client);
+  const apiKey = await ensureKey(p);
+  const { model, all } = await pickModel(client, p, store.getKey(p.id)?.model);
+  applyTo(client, p, apiKey, model, all);
+}
+
+function cmdStatus(): void {
+  const width = Math.max(...CLIENTS.map((cli) => cli.displayName.length));
+  for (const cli of CLIENTS) {
+    const d = describe(cli);
+    const text = d.empty ? c.dim(d.text) : d.text;
+    console.log(`  ${c.bold(cli.displayName.padEnd(width))}  ${text}${d.warn ? "  " + c.yellow(d.warn) : ""}`);
   }
-  await cmdUse(profile.name);
+  const keys = Object.entries(store.load().keys);
+  if (keys.length) {
+    console.log(`\n${c.dim(t.savedKeys)}`);
+    for (const [id, k] of keys) {
+      console.log(`  ${getProvider(id)?.displayName ?? id}  ${c.dim(store.maskKey(k.apiKey))}`);
+    }
+  }
+}
+
+/** 非交互：codesw use <client> <provider> [model]，兼容旧写法 use <provider> <client> */
+async function cmdUse(args: string[]): Promise<void> {
+  let [a, b, model] = args;
+  if (!a || !b) throw new Error(t.useUsage);
+  if (!getClient(a) && getClient(b)) [a, b] = [b, a];
+  const client = getClient(a);
+  if (!client) throw new Error(t.unknownClient(a, CLIENTS.map((x) => x.id).join(", ")));
+  const p = getProvider(b);
+  if (!p) throw new Error(t.unknownProvider(b, PROVIDERS.map((x) => x.id).join(", ")));
+  if (!supports(client, p)) throw new Error(t.unsupported(p.displayName, client.displayName));
+  const apiKey = await ensureKey(p);
+  const list = await loadModels(p);
+  const chosen = model || store.getKey(p.id)?.model || defaultModelOf(p);
+  if (!chosen) throw new Error(t.needModel);
+  applyTo(client, p, apiKey, chosen, list.models);
+}
+
+async function cmdRestore(id?: string): Promise<void> {
+  const candidates = CLIENTS.filter((cli) => cli.restore);
+  const client = id
+    ? getClient(id)
+    : candidates.length === 1
+      ? candidates[0]
+      : await select(t.askRestore, candidates.map((cli) => ({ label: cli.displayName, value: cli })));
+  if (!client) throw new Error(t.unknownClient(id ?? "", candidates.map((x) => x.id).join(", ")));
+  restore(client);
+}
+
+/** 更换或删除已保存的 Key */
+async function cmdKey(id?: string): Promise<void> {
+  const keys = store.load().keys;
+  const p = id
+    ? getProvider(id)
+    : await select(
+        t.askKeyProvider,
+        PROVIDERS.map((x) => ({ label: x.displayName, hint: keys[x.id] ? store.maskKey(keys[x.id].apiKey) : t.notSaved, value: x })),
+      );
+  if (!p) throw new Error(t.unknownProvider(id ?? "", PROVIDERS.map((x) => x.id).join(", ")));
+  const saved = keys[p.id];
+  if (saved) {
+    const action = await select(t.keyOf(p.displayName, store.maskKey(saved.apiKey)), [
+      { label: t.replaceKey, value: "replace" },
+      { label: t.removeKey, value: "remove" },
+    ]);
+    if (action === "remove") {
+      store.removeKey(p.id);
+      console.log(`${c.green("✔")} ${t.keyRemoved(p.displayName)}`);
+      console.log(c.dim(t.clientUnaffected));
+      return;
+    }
+  }
+  if (p.apiKeyUrl) console.log(c.dim(t.createKeyAt(p.apiKeyUrl)));
+  const apiKey = await askSecret(t.pasteNewKey(p.displayName), (v) => t.newKeyDone(c.dim(store.maskKey(v))));
+  if (!apiKey) throw new Error(t.keyCancelled);
+  store.setKey(p.id, { apiKey, model: saved?.model });
+  console.log(`${c.green("✔")} ${t.keySavedFor(p.displayName)}`);
+  console.log(c.dim(t.runAgain));
+}
+
+function usage(): void {
+  const rows = t.usageRows;
+  const col = Math.max(...rows.map(([cmd, args]) => strWidth(`${cmd} ${args}`))) + 4;
+  const lines = rows.map(([cmd, args, desc]) => {
+    const used = strWidth(`${cmd} ${args}`);
+    return `  ${c.cyan(cmd)} ${args}${" ".repeat(col - used)}${desc}`;
+  });
+  const example = isZh ? "codesw use claude-code bumo.cc glm/glm-5.3" : "codesw use claude-code bumo.ai claude-sonnet-5-5";
+  console.log(`${c.bold("codesw")} ${c.dim(`v${version()} · ${t.tagline}`)}
+
+${c.bold(t.usageTitle)}
+${lines.join("\n")}
+
+${c.bold(t.clientsTitle)}  ${CLIENTS.map((x) => `${c.green(x.id)} ${c.dim(x.displayName)}`).join("  ")}
+${c.bold(t.providersTitle)}  ${PROVIDERS.map((x) => c.green(x.id)).join("  ")}
+
+${c.dim(`${t.example}: ${example}`)}
+${c.dim(t.keyStoredAt(tilde(store.profilesPath)))}
+`);
 }
 
 async function main(): Promise<void> {
@@ -196,30 +240,29 @@ async function main(): Promise<void> {
       case undefined:
       case "":
         await interactive(); break;
-      case "list": case "ls":
-        cmdList(); break;
-      case "add":
-        await cmdAdd(); break;
-      case "show":
-        if (!rest[0]) { usage(); process.exit(1); }
-        cmdShow(rest[0]); break;
-      case "remove": case "rm":
-        if (!rest[0]) { usage(); process.exit(1); }
-        cmdRemove(rest[0]); break;
+      case "status": case "list": case "ls":
+        cmdStatus(); break;
       case "use":
-        if (!rest[0]) { usage(); process.exit(1); }
-        await cmdUse(rest[0], rest[1]); break;
+        await cmdUse(rest); break;
       case "restore":
         await cmdRestore(rest[0]); break;
+      case "key": case "keys": case "add":
+        await cmdKey(rest[0]); break;
+      case "remove": case "rm":
+        if (!rest[0]) throw new Error(t.rmUsage);
+        if (!store.removeKey(getProvider(rest[0])?.id ?? rest[0])) throw new Error(t.noSavedKey(rest[0]));
+        console.log(`${c.green("✔")} ${t.keyRemoved(rest[0])}`); break;
+      case "-v": case "--version": case "version":
+        console.log(version()); break;
       case "-h": case "--help": case "help":
         usage(); break;
       default:
-        console.error(c.red(`未知命令: ${cmd}`));
+        console.error(c.red(t.unknownCommand(cmd)) + "\n");
         usage();
         process.exit(1);
     }
   } catch (e: any) {
-    console.error(c.red(`错误: ${e?.message ?? e}`));
+    console.error(`${c.red("✖")} ${e?.message ?? e}`);
     process.exit(1);
   }
 }

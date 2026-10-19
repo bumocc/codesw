@@ -3,6 +3,7 @@ import { ProviderDef } from "./types";
 export const volcengine: ProviderDef = {
   id: "volcengine",
   displayName: "火山方舟 API",
+  displayNameEn: "Volcengine Ark API",
   apiKeyUrl: "https://console.volcengine.com/ark",
   models: [
     "doubao-seed-2.0-code",
