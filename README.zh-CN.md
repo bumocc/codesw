@@ -2,7 +2,7 @@
 
 [English](./README.md) | 简体中文
 
-一条命令，给 Claude Code / OpenCode / OpenClaw / Hermes Agent 切换模型供应商。
+一条命令，给 Claude Code / OpenCode / OpenClaw / Hermes Agent / Cline / Kilo Code / Qwen Code / Continue / Aider / pi 切换模型供应商。
 
 原理是直接写入各客户端自己的配置文件，不做任何代理或中转。
 
@@ -24,7 +24,7 @@ codesw
 2. **使用哪个供应商**：首次使用某个供应商时粘贴一次 API Key，之后自动复用
 3. **使用哪个模型**：推荐模型排在最前；不墨 Router 会实时获取最新上架的模型
 
-完成后重新打开客户端即可生效。界面语言跟随系统：中文系统显示中文，其他语言显示英文。以后换模型、换供应商，再运行一次 `codesw` 就行。
+写入后会用你选的 Key 和模型发一次最小请求测试连通：通了直接用；Key 无效、模型不存在、余额不足、网络不通会分别说明，并告诉你下一步怎么改。完成后重新打开客户端即可生效。界面语言跟随系统：中文系统显示中文，其他语言显示英文。以后换模型、换供应商，再运行一次 `codesw` 就行。
 
 想换回 Claude Code 官方账号：运行 `codesw`，在供应商列表最下方选「恢复官方账号」。
 
@@ -33,7 +33,8 @@ codesw
 ```bash
 codesw                                # 交互式切换
 codesw status                         # 查看各客户端当前使用的供应商和模型
-codesw use <客户端> <供应商> [模型]    # 不经交互直接切换，适合脚本
+codesw use <客户端> <供应商> [模型] [--key <Key>]  # 不经交互直接切换，适合脚本
+codesw test [客户端]                   # 按当前配置测试连通，配错时告诉你错在哪
 codesw restore [客户端]                # 恢复客户端官方账号
 codesw key [供应商]                    # 更换或删除已保存的 API Key
 ```
@@ -43,6 +44,7 @@ codesw key [供应商]                    # 更换或删除已保存的 API Key
 ```bash
 codesw use claude-code bumo.cc glm/glm-5.3
 codesw use opencode bumo.ai claude-sonnet-5-5
+codesw use claude-code bumo.cc deepseek/deepseek-flash --key sk-xxx   # 新机器一条命令配好
 ```
 
 省略模型时，使用上次为该供应商选择的模型，没有则用默认模型。
@@ -55,6 +57,14 @@ codesw use opencode bumo.ai claude-sonnet-5-5
 | `opencode`    | [OpenCode](https://opencode.ai/)                           | `~/.config/opencode/opencode.json`         |
 | `openclaw`    | [OpenClaw](https://openclaw.ai/)                           | `~/.openclaw/openclaw.json`                |
 | `hermes`      | [Hermes Agent](https://hermes-agent.nousresearch.com/)     | `~/.hermes/config.yaml` + `~/.hermes/.env` |
+| `cline` | [Cline](https://cline.bot/)（CLI） | `~/.cline/data/settings/providers.json` |
+| `kilo` | [Kilo Code](https://kilo.ai/)（CLI） | `~/.config/kilo/kilo.jsonc` |
+| `qwen-code` | [Qwen Code](https://github.com/QwenLM/qwen-code) | `~/.qwen/settings.json` |
+| `continue` | [Continue](https://continue.dev/)（VS Code / JetBrains / CLI） | `~/.continue/config.yaml` |
+| `aider` | [Aider](https://aider.chat/) | `~/.aider.conf.yml` |
+| `pi` | [pi](https://github.com/badlogic/pi-mono) | `~/.pi/agent/models.json` + `settings.json` |
+
+Cline、Kilo Code、Qwen Code、Continue、Aider、pi 只支持 OpenAI 兼容协议，codesw 会自动只列出提供 OpenAI 兼容端点的供应商。
 
 ## 支持的供应商
 

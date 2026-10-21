@@ -1,3 +1,5 @@
+import type { CheckOutcome } from "./check";
+
 /** 跟随系统语言：中文环境显示中文，其他一律英文 */
 function detectZh(): boolean {
   const env = process.env.LC_ALL || process.env.LC_MESSAGES || process.env.LANG || process.env.LANGUAGE || "";
@@ -53,7 +55,7 @@ const zh = {
   askRestore: "恢复哪个客户端？",
 
   savedKeys: "已保存的 Key:",
-  useUsage: "用法: codesw use <客户端> <供应商> [模型]",
+  useUsage: "用法: codesw use <客户端> <供应商> [模型] [--key <Key>]",
   unknownClient: (id: string, all: string) => `未知客户端: ${id}，可选: ${all}`,
   unknownProvider: (id: string, all: string) => `未知供应商: ${id}，可选: ${all}`,
   unsupported: (p: string, client: string) => `${p} 不支持 ${client}`,
@@ -79,7 +81,8 @@ const zh = {
   usageRows: [
     ["codesw", "", "按提示选择 客户端 → 供应商 → 模型"],
     ["codesw status", "", "查看各客户端当前使用的供应商和模型"],
-    ["codesw use", "<客户端> <供应商> [模型]", "不经交互直接切换，适合脚本"],
+    ["codesw use", "<客户端> <供应商> [模型] [--key <Key>]", "不经交互直接切换，适合脚本"],
+    ["codesw test", "[客户端]", "按当前配置测试连通，配错时告诉你错在哪"],
     ["codesw restore", "[客户端]", "恢复客户端官方账号"],
     ["codesw key", "[供应商]", "更换或删除已保存的 API Key"],
   ] as [string, string, string][],
@@ -90,6 +93,28 @@ const zh = {
 
   noEndpoint: (name: string) => `${name} 没有可用端点`,
   noAnthropic: (name: string) => `${name} 未提供 Anthropic 兼容端点，无法用于 Claude Code`,
+
+  checking: "正在测试连通…",
+  checkOk: (sec: string) => `连通正常（${sec}s），可以开始用了`,
+  checkFail: {
+    ok: () => "",
+    auth: (p: string) => `${p} 拒绝了这个 API Key`,
+    model: (p: string, m: string) => `${p} 没有模型 ${m}`,
+    balance: (p: string) => `${p} 账户余额或额度不足`,
+    network: (p: string) => `连不上 ${p}`,
+    error: (p: string) => `${p} 返回了错误`,
+  } as Record<CheckOutcome, (p: string, m: string) => string>,
+  checkFix: {
+    ok: "",
+    auth: "Key 可能复制不完整、已删除或已过期：运行 codesw key 换一个",
+    model: "运行 codesw 重新选一个列表里的模型",
+    balance: "到供应商后台充值或换一个有额度的 Key，配置不用改",
+    network: "检查网络或代理后运行 codesw test 再试",
+    error: "配置已写入；可稍后运行 codesw test 再试",
+  } as Record<CheckOutcome, string>,
+  nothingToTest: "还没有客户端通过 codesw 配置过，先运行 codesw",
+  cannotTest: (client: string) => `${client} 当前不是 codesw 配置的供应商，无法测试`,
+  noKeyToTest: (name: string) => `没有保存 ${name} 的 Key，运行 codesw key 保存后再测`,
 };
 
 const en: typeof zh = {
@@ -133,7 +158,7 @@ const en: typeof zh = {
   askRestore: "Restore which client?",
 
   savedKeys: "Saved keys:",
-  useUsage: "Usage: codesw use <client> <provider> [model]",
+  useUsage: "Usage: codesw use <client> <provider> [model] [--key <key>]",
   unknownClient: (id: string, all: string) => `Unknown client: ${id}. Available: ${all}`,
   unknownProvider: (id: string, all: string) => `Unknown provider: ${id}. Available: ${all}`,
   unsupported: (p: string, client: string) => `${p} cannot be used with ${client}`,
@@ -159,7 +184,8 @@ const en: typeof zh = {
   usageRows: [
     ["codesw", "", "Pick client → provider → model interactively"],
     ["codesw status", "", "Show the provider and model each client uses"],
-    ["codesw use", "<client> <provider> [model]", "Switch without prompts, for scripts"],
+    ["codesw use", "<client> <provider> [model] [--key <key>]", "Switch without prompts, for scripts"],
+    ["codesw test", "[client]", "Test the current setup and tell you what's wrong"],
     ["codesw restore", "[client]", "Restore a client's official account"],
     ["codesw key", "[provider]", "Replace or delete a saved API key"],
   ],
@@ -170,6 +196,28 @@ const en: typeof zh = {
 
   noEndpoint: (name: string) => `${name} has no usable endpoint`,
   noAnthropic: (name: string) => `${name} has no Anthropic-compatible endpoint and cannot be used with Claude Code`,
+
+  checking: "Testing the connection…",
+  checkOk: (sec: string) => `Connection works (${sec}s), you're good to go`,
+  checkFail: {
+    ok: () => "",
+    auth: (p: string) => `${p} rejected this API key`,
+    model: (p: string, m: string) => `${p} has no model ${m}`,
+    balance: (p: string) => `Your ${p} balance or quota has run out`,
+    network: (p: string) => `Could not reach ${p}`,
+    error: (p: string) => `${p} returned an error`,
+  },
+  checkFix: {
+    ok: "",
+    auth: "The key may be truncated, deleted or expired: run codesw key to replace it",
+    model: "Run codesw and pick a model from the list",
+    balance: "Top up or switch to a key with quota; the client settings can stay as they are",
+    network: "Check your network or proxy, then run codesw test again",
+    error: "Settings were written; run codesw test later to retry",
+  },
+  nothingToTest: "No client has been configured with codesw yet. Run codesw first",
+  cannotTest: (client: string) => `${client} is not using a provider set by codesw, so it can't be tested`,
+  noKeyToTest: (name: string) => `No saved ${name} key. Run codesw key to save one, then test again`,
 };
 
 export const t = isZh ? zh : en;

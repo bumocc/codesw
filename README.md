@@ -2,7 +2,7 @@
 
 English | [简体中文](https://github.com/bumocc/codesw/blob/main/README.zh-CN.md)
 
-One command to switch model providers for Claude Code / OpenCode / OpenClaw / Hermes Agent.
+One command to switch model providers for Claude Code / OpenCode / OpenClaw / Hermes Agent / Cline / Kilo Code / Qwen Code / Continue / Aider / pi.
 
 codesw writes each client's own config file directly — no proxy, no middleman.
 
@@ -24,7 +24,7 @@ Three steps, using the arrow keys and Enter:
 2. **Which provider** — paste your API key the first time you use a provider; it is saved and reused afterwards
 3. **Which model** — recommended models come first; Bumo Router fetches its latest model list live
 
-Restart the client to apply. To switch models or providers later, just run `codesw` again. The interface follows your system language: Chinese on Chinese systems, English everywhere else.
+After writing the config, codesw sends one tiny request with the key and model you chose. If it works you're done; an invalid key, unknown model, empty balance or network problem is reported separately with what to fix next. Restart the client to apply. To switch models or providers later, just run `codesw` again. The interface follows your system language: Chinese on Chinese systems, English everywhere else.
 
 To go back to your official Claude Code account, run `codesw` and choose "Restore official account" at the bottom of the provider list.
 
@@ -33,7 +33,8 @@ To go back to your official Claude Code account, run `codesw` and choose "Restor
 ```bash
 codesw                                  # switch interactively
 codesw status                           # show the provider and model each client uses
-codesw use <client> <provider> [model]  # switch without prompts, for scripts
+codesw use <client> <provider> [model] [--key <key>]  # switch without prompts, for scripts
+codesw test [client]                    # test the current setup and tell you what's wrong
 codesw restore [client]                 # restore a client's official account
 codesw key [provider]                   # replace or delete a saved API key
 ```
@@ -43,6 +44,7 @@ Examples:
 ```bash
 codesw use claude-code bumo.ai claude-sonnet-5-5
 codesw use opencode bumo.cc glm/glm-5.3
+codesw use claude-code bumo.ai claude-sonnet-5-5 --key sk-xxx   # set up a new machine in one command
 ```
 
 When the model is omitted, codesw uses the model you last picked for that provider, or the provider's default.
@@ -55,6 +57,14 @@ When the model is omitted, codesw uses the model you last picked for that provid
 | `opencode`    | [OpenCode](https://opencode.ai/)                           | `~/.config/opencode/opencode.json`         |
 | `openclaw`    | [OpenClaw](https://openclaw.ai/)                           | `~/.openclaw/openclaw.json`                |
 | `hermes`      | [Hermes Agent](https://hermes-agent.nousresearch.com/)     | `~/.hermes/config.yaml` + `~/.hermes/.env` |
+| `cline` | [Cline](https://cline.bot/) (CLI) | `~/.cline/data/settings/providers.json` |
+| `kilo` | [Kilo Code](https://kilo.ai/) (CLI) | `~/.config/kilo/kilo.jsonc` |
+| `qwen-code` | [Qwen Code](https://github.com/QwenLM/qwen-code) | `~/.qwen/settings.json` |
+| `continue` | [Continue](https://continue.dev/) (VS Code / JetBrains / CLI) | `~/.continue/config.yaml` |
+| `aider` | [Aider](https://aider.chat/) | `~/.aider.conf.yml` |
+| `pi` | [pi](https://github.com/badlogic/pi-mono) | `~/.pi/agent/models.json` + `settings.json` |
+
+Cline, Kilo Code, Qwen Code, Continue, Aider and pi speak the OpenAI-compatible protocol only; codesw lists only providers that offer an OpenAI-compatible endpoint for them.
 
 ## Supported providers
 

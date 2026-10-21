@@ -1,5 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
+import { ProviderDef, ProviderEndpoint, matchBaseUrl } from "../providers";
+import { t } from "../i18n";
 
 export interface ApplyInput {
   apiKey: string;
@@ -33,4 +35,16 @@ export function hasCommand(cmd: string): boolean {
     }
   }
   return false;
+}
+
+/** 只说 OpenAI 协议的客户端（Continue / Aider / pi / Qwen Code / Cline / Kilo）用的端点 */
+export function openaiEndpoint(provider: ProviderDef): ProviderEndpoint {
+  const ep = provider.endpoints.openai;
+  if (!ep) throw new Error(t.noEndpoint(provider.displayName));
+  return ep;
+}
+
+/** 配置里的地址是不是这个供应商的（含旧地址），换供应商时用来找出要替换的旧条目 */
+export function sameUrl(url: string, provider: ProviderDef): boolean {
+  return matchBaseUrl(url)?.provider.id === provider.id;
 }

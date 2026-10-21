@@ -3,7 +3,8 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 import { CLIENTS, ClientDef, getClient, isInstalled } from "./clients";
-import { PROVIDERS, ProviderDef, defaultModelOf, getProvider, loadModels, matchBaseUrl } from "./providers";
+import { PROVIDERS, ProtocolKind, ProviderDef, defaultModelOf, getProvider, loadModels, matchBaseUrl } from "./providers";
+import { check } from "./check";
 import { Choice, ask, askSecret, select, strWidth, withSpinner } from "./prompt";
 import * as store from "./profiles";
 import { c } from "./color";
@@ -42,7 +43,27 @@ function currentProvider(client: ClientDef): ProviderDef | undefined {
 }
 
 function supports(client: ClientDef, p: ProviderDef): boolean {
-  return client.id === "claude-code" ? !!p.endpoints.anthropic : true;
+  return client.protocol ? !!p.endpoints[client.protocol] : true;
+}
+
+/** 客户端实际走的协议，和各客户端 apply 里选端点的规则一致 */
+function protocolOf(client: ClientDef, p: ProviderDef): ProtocolKind {
+  return client.protocol ?? (p.endpoints.openai ? "openai" : "anthropic");
+}
+
+/** 用客户端实际的协议、Key、模型发一次最小请求，把结果翻成一句能照着做的话 */
+async function verify(client: ClientDef, p: ProviderDef, apiKey: string, model: string): Promise<boolean> {
+  const r = await withSpinner(t.checking, check(p, protocolOf(client, p), apiKey, model));
+  const sec = (r.ms / 1000).toFixed(1);
+  if (r.outcome === "ok") {
+    console.log(`${c.green("✔")} ${t.checkOk(sec)}`);
+    return true;
+  }
+  console.log(`${c.red("✖")} ${t.checkFail[r.outcome](p.displayName, model)}`);
+  if (r.detail) console.log(c.dim(`  ${r.detail.length > 160 ? r.detail.slice(0, 157) + "…" : r.detail}`));
+  const fix = t.checkFix[r.outcome];
+  if (fix) console.log(c.dim(`  ${fix}`));
+  return false;
 }
 
 async function pickClient(): Promise<ClientDef> {
@@ -111,13 +132,15 @@ async function pickModel(client: ClientDef, p: ProviderDef, preferred?: string):
   return { model, all: list.models };
 }
 
-function applyTo(client: ClientDef, p: ProviderDef, apiKey: string, model: string, all: string[]): void {
+async function applyTo(client: ClientDef, p: ProviderDef, apiKey: string, model: string, all: string[]): Promise<void> {
   const file = client.apply({ apiKey, model }, p, all);
   store.setKey(p.id, { apiKey, model });
   const [prefix, target] = t.switched(client.displayName, `${p.displayName} · ${model}`);
   console.log("");
   console.log(`${c.green("✔")} ${c.bold(prefix)}${c.cyan(c.bold(target))}`);
   console.log(c.dim(t.writtenTo(tilde(file), client.displayName)));
+  // 写完顺手测一次：配错了当场知道错在哪，不用等打开客户端才发现
+  if (!(await verify(client, p, apiKey, model))) process.exitCode = 1;
 }
 
 function restore(client: ClientDef): void {
@@ -134,7 +157,7 @@ async function interactive(): Promise<void> {
   if (p === RESTORE) return restore(client);
   const apiKey = await ensureKey(p);
   const { model, all } = await pickModel(client, p, store.getKey(p.id)?.model);
-  applyTo(client, p, apiKey, model, all);
+  await applyTo(client, p, apiKey, model, all);
 }
 
 function cmdStatus(): void {
@@ -153,9 +176,23 @@ function cmdStatus(): void {
   }
 }
 
-/** 非交互：codesw use <client> <provider> [model]，兼容旧写法 use <provider> <client> */
+/** 取出 --key <key> / --key=<key>，其余按位置参数返回 */
+function takeKeyFlag(args: string[]): { key?: string; rest: string[] } {
+  const rest: string[] = [];
+  let key: string | undefined;
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i];
+    if (a === "--key") key = args[++i];
+    else if (a.startsWith("--key=")) key = a.slice(6);
+    else rest.push(a);
+  }
+  return { key: key?.trim() || undefined, rest };
+}
+
+/** 非交互：codesw use <client> <provider> [model] [--key <key>]，兼容旧写法 use <provider> <client> */
 async function cmdUse(args: string[]): Promise<void> {
-  let [a, b, model] = args;
+  const flags = takeKeyFlag(args);
+  let [a, b, model] = flags.rest;
   if (!a || !b) throw new Error(t.useUsage);
   if (!getClient(a) && getClient(b)) [a, b] = [b, a];
   const client = getClient(a);
@@ -163,11 +200,38 @@ async function cmdUse(args: string[]): Promise<void> {
   const p = getProvider(b);
   if (!p) throw new Error(t.unknownProvider(b, PROVIDERS.map((x) => x.id).join(", ")));
   if (!supports(client, p)) throw new Error(t.unsupported(p.displayName, client.displayName));
-  const apiKey = await ensureKey(p);
+  // 带 --key 时直接用并保存，一条命令就能配好，不再停下来等粘贴
+  const apiKey = flags.key ?? (await ensureKey(p));
   const list = await loadModels(p);
   const chosen = model || store.getKey(p.id)?.model || defaultModelOf(p);
   if (!chosen) throw new Error(t.needModel);
-  applyTo(client, p, apiKey, chosen, list.models);
+  await applyTo(client, p, apiKey, chosen, list.models);
+}
+
+/** codesw test [client]：按客户端当前配置测一次连通，不写任何文件 */
+async function cmdTest(id?: string): Promise<void> {
+  const targets = id ? [getClient(id)] : CLIENTS.filter((cli) => matchBaseUrl(cli.current()?.baseUrl));
+  if (id && !targets[0]) throw new Error(t.unknownClient(id, CLIENTS.map((x) => x.id).join(", ")));
+  if (!targets.length) throw new Error(t.nothingToTest);
+  let failed = false;
+  for (const client of targets as ClientDef[]) {
+    const cur = client.current();
+    const p = currentProvider(client);
+    console.log(`${c.bold(client.displayName)}${cur?.model && p ? c.dim(`  ${p.displayName} · ${cur.model}`) : ""}`);
+    if (!p || !cur?.model) {
+      console.log(c.dim(`  ${t.cannotTest(client.displayName)}`));
+      failed = true;
+      continue;
+    }
+    const apiKey = store.getKey(p.id)?.apiKey;
+    if (!apiKey) {
+      console.log(c.dim(`  ${t.noKeyToTest(p.displayName)}`));
+      failed = true;
+      continue;
+    }
+    if (!(await verify(client, p, apiKey, cur.model))) failed = true;
+  }
+  if (failed) process.exitCode = 1;
 }
 
 async function cmdRestore(id?: string): Promise<void> {
@@ -244,6 +308,8 @@ async function main(): Promise<void> {
         cmdStatus(); break;
       case "use":
         await cmdUse(rest); break;
+      case "test": case "check":
+        await cmdTest(rest[0]); break;
       case "restore":
         await cmdRestore(rest[0]); break;
       case "key": case "keys": case "add":
