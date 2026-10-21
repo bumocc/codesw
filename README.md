@@ -2,7 +2,7 @@
 
 English | [简体中文](https://github.com/bumocc/codesw/blob/main/README.zh-CN.md)
 
-One command to switch model providers for Claude Code / OpenCode / OpenClaw / Hermes Agent.
+One command to switch model providers for Claude Code / OpenCode / OpenClaw / Hermes Agent / Cline / Kilo Code / Qwen Code / Continue / Aider / pi.
 
 codesw writes each client's own config file directly — no proxy, no middleman.
 
@@ -57,6 +57,14 @@ When the model is omitted, codesw uses the model you last picked for that provid
 | `opencode`    | [OpenCode](https://opencode.ai/)                           | `~/.config/opencode/opencode.json`         |
 | `openclaw`    | [OpenClaw](https://openclaw.ai/)                           | `~/.openclaw/openclaw.json`                |
 | `hermes`      | [Hermes Agent](https://hermes-agent.nousresearch.com/)     | `~/.hermes/config.yaml` + `~/.hermes/.env` |
+| `cline` | [Cline](https://cline.bot/) (CLI) | `~/.cline/data/settings/providers.json` |
+| `kilo` | [Kilo Code](https://kilo.ai/) (CLI) | `~/.config/kilo/kilo.jsonc` |
+| `qwen-code` | [Qwen Code](https://github.com/QwenLM/qwen-code) | `~/.qwen/settings.json` |
+| `continue` | [Continue](https://continue.dev/) (VS Code / JetBrains / CLI) | `~/.continue/config.yaml` |
+| `aider` | [Aider](https://aider.chat/) | `~/.aider.conf.yml` |
+| `pi` | [pi](https://github.com/badlogic/pi-mono) | `~/.pi/agent/models.json` + `settings.json` |
+
+Cline, Kilo Code, Qwen Code, Continue, Aider and pi speak the OpenAI-compatible protocol only; codesw lists only providers that offer an OpenAI-compatible endpoint for them.
 
 ## Supported providers
 

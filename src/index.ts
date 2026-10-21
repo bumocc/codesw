@@ -43,12 +43,12 @@ function currentProvider(client: ClientDef): ProviderDef | undefined {
 }
 
 function supports(client: ClientDef, p: ProviderDef): boolean {
-  return client.id === "claude-code" ? !!p.endpoints.anthropic : true;
+  return client.protocol ? !!p.endpoints[client.protocol] : true;
 }
 
 /** 客户端实际走的协议，和各客户端 apply 里选端点的规则一致 */
 function protocolOf(client: ClientDef, p: ProviderDef): ProtocolKind {
-  return client.id === "claude-code" || !p.endpoints.openai ? "anthropic" : "openai";
+  return client.protocol ?? (p.endpoints.openai ? "openai" : "anthropic");
 }
 
 /** 用客户端实际的协议、Key、模型发一次最小请求，把结果翻成一句能照着做的话 */

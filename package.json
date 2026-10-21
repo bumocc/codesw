@@ -1,7 +1,7 @@
 {
   "name": "@bumocc/codesw",
   "version": "0.2.1",
-  "description": "Switch model providers for Claude Code / OpenCode / OpenClaw / Hermes Agent",
+  "description": "Switch model providers for Claude Code / OpenCode / OpenClaw / Hermes Agent / Cline / Kilo Code / Qwen Code / Continue / Aider / pi",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
@@ -20,6 +20,12 @@
     "opencode",
     "openclaw",
     "hermes-agent",
+    "cline",
+    "kilo-code",
+    "qwen-code",
+    "continue",
+    "aider",
+    "pi",
     "cli"
   ],
   "license": "MIT",

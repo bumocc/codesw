@@ -2,7 +2,7 @@
 
 [English](./README.md) | 简体中文
 
-一条命令，给 Claude Code / OpenCode / OpenClaw / Hermes Agent 切换模型供应商。
+一条命令，给 Claude Code / OpenCode / OpenClaw / Hermes Agent / Cline / Kilo Code / Qwen Code / Continue / Aider / pi 切换模型供应商。
 
 原理是直接写入各客户端自己的配置文件，不做任何代理或中转。
 
@@ -57,6 +57,14 @@ codesw use claude-code bumo.cc deepseek/deepseek-flash --key sk-xxx   # 新机�
 | `opencode`    | [OpenCode](https://opencode.ai/)                           | `~/.config/opencode/opencode.json`         |
 | `openclaw`    | [OpenClaw](https://openclaw.ai/)                           | `~/.openclaw/openclaw.json`                |
 | `hermes`      | [Hermes Agent](https://hermes-agent.nousresearch.com/)     | `~/.hermes/config.yaml` + `~/.hermes/.env` |
+| `cline` | [Cline](https://cline.bot/)（CLI） | `~/.cline/data/settings/providers.json` |
+| `kilo` | [Kilo Code](https://kilo.ai/)（CLI） | `~/.config/kilo/kilo.jsonc` |
+| `qwen-code` | [Qwen Code](https://github.com/QwenLM/qwen-code) | `~/.qwen/settings.json` |
+| `continue` | [Continue](https://continue.dev/)（VS Code / JetBrains / CLI） | `~/.continue/config.yaml` |
+| `aider` | [Aider](https://aider.chat/) | `~/.aider.conf.yml` |
+| `pi` | [pi](https://github.com/badlogic/pi-mono) | `~/.pi/agent/models.json` + `settings.json` |
+
+Cline、Kilo Code、Qwen Code、Continue、Aider、pi 只支持 OpenAI 兼容协议，codesw 会自动只列出提供 OpenAI 兼容端点的供应商。
 
 ## 支持的供应商
 
