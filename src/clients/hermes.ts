@@ -21,6 +21,8 @@ export function applyHermes(input: ApplyInput, provider: ProviderDef, models: st
   cfg.model.provider = "custom";
   cfg.model.base_url = ep.baseUrl;
   cfg.model.default = input.model;
+  // Hermes 0.22+ 只把 OPENAI_API_KEY 发给 OpenAI 自家域名，自定义地址要显式声明读哪个变量
+  cfg.model.key_env = "OPENAI_API_KEY";
   delete cfg.model.model;
 
   // 别名统一以 codesw- 开头，每次应用前整体替换
