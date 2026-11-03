@@ -12,6 +12,8 @@ import { applyContinue, currentContinue } from "./continue";
 import { applyQwenCode, currentQwenCode } from "./qwen-code";
 import { applyAider, currentAider } from "./aider";
 import { applyPi, currentPi } from "./pi";
+import { applyVSCode, currentVSCode, VSCODE_USER_DIR } from "./vscode";
+import { applyDroid, currentDroid } from "./droid";
 import { ApplyInput, CurrentConfig, hasCommand } from "./shared";
 
 export { ApplyInput, CurrentConfig } from "./shared";
@@ -74,6 +76,14 @@ export const CLIENTS: ClientDef[] = [
   {
     id: "pi", displayName: "pi", command: "pi", configDir: path.join(home, ".pi"), protocol: "openai",
     apply: applyPi, current: currentPi,
+  },
+  {
+    id: "vscode", displayName: "VS Code Copilot Chat", command: "code", configDir: VSCODE_USER_DIR, protocol: "openai",
+    apply: applyVSCode, current: currentVSCode,
+  },
+  {
+    id: "droid", displayName: "Factory Droid", command: "droid", configDir: path.join(home, ".factory"), protocol: "openai",
+    apply: applyDroid, current: currentDroid,
   },
 ];
 
