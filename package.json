@@ -1,7 +1,7 @@
 {
   "name": "@bumocc/codesw",
-  "version": "0.2.4",
-  "description": "Switch model providers for Claude Code / OpenCode / OpenClaw / Hermes Agent / Cline / Kilo Code / Qwen Code / Continue / Aider / pi / VS Code Copilot Chat / Factory Droid",
+  "version": "0.2.5",
+  "description": "Switch model providers for Claude Code / OpenCode / OpenClaw / Hermes Agent / Cline / Kilo Code / Qwen Code / Continue / Aider / pi / VS Code Copilot Chat / Factory Droid / DeepSeek Harness",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
@@ -29,6 +29,7 @@
     "vscode",
     "copilot-chat",
     "factory-droid",
+    "deepseek-harness",
     "cli"
   ],
   "license": "MIT",

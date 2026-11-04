@@ -14,6 +14,7 @@ import { applyAider, currentAider } from "./aider";
 import { applyPi, currentPi } from "./pi";
 import { applyVSCode, currentVSCode, VSCODE_USER_DIR } from "./vscode";
 import { applyDroid, currentDroid } from "./droid";
+import { applyDsh, currentDsh, DSH_HOME } from "./dsh";
 import { ApplyInput, CurrentConfig, hasCommand } from "./shared";
 
 export { ApplyInput, CurrentConfig } from "./shared";
@@ -84,6 +85,10 @@ export const CLIENTS: ClientDef[] = [
   {
     id: "droid", displayName: "Factory Droid", command: "droid", configDir: path.join(home, ".factory"), protocol: "openai",
     apply: applyDroid, current: currentDroid,
+  },
+  {
+    id: "dsh", displayName: "DeepSeek Harness", command: "dsh", configDir: DSH_HOME,
+    apply: applyDsh, current: currentDsh,
   },
 ];
 

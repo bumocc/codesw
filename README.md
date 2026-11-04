@@ -2,7 +2,7 @@
 
 English | [简体中文](https://github.com/bumocc/codesw/blob/main/README.zh-CN.md)
 
-One command to switch model providers for Claude Code / OpenCode / OpenClaw / Hermes Agent / Cline / Kilo Code / Qwen Code / Continue / Aider / pi / VS Code Copilot Chat / Factory Droid.
+One command to switch model providers for Claude Code / OpenCode / OpenClaw / Hermes Agent / Cline / Kilo Code / Qwen Code / Continue / Aider / pi / VS Code Copilot Chat / Factory Droid / DeepSeek Harness.
 
 codesw writes each client's own config file directly — no proxy, no middleman.
 
@@ -65,6 +65,7 @@ When the model is omitted, codesw uses the model you last picked for that provid
 | `pi` | [pi](https://github.com/badlogic/pi-mono) | `~/.pi/agent/models.json` + `settings.json` |
 | `vscode` | [VS Code Copilot Chat](https://code.visualstudio.com/docs/copilot/customization/language-models) (Custom Endpoint, no extension needed) | `chatLanguageModels.json` in the VS Code user folder |
 | `droid` | [Factory Droid](https://docs.factory.ai/cli/configuration/byok) (no Factory login needed) | `~/.factory/settings.json` |
+| `dsh` | [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) | `~/.dsh/cordis.patch.yml` + `~/.dsh/.env` |
 
 Cline, Kilo Code, Qwen Code, Continue, Aider, pi, VS Code Copilot Chat and Factory Droid speak the OpenAI-compatible protocol only; codesw lists only providers that offer an OpenAI-compatible endpoint for them.
 

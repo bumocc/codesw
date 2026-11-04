@@ -48,3 +48,13 @@ export function openaiEndpoint(provider: ProviderDef): ProviderEndpoint {
 export function sameUrl(url: string, provider: ProviderDef): boolean {
   return matchBaseUrl(url)?.provider.id === provider.id;
 }
+
+/** 在 KEY=VALUE 格式的 .env 文件里写入或替换一行，权限 600 */
+export function writeEnvKey(file: string, key: string, value: string): void {
+  const lines = fs.existsSync(file) ? fs.readFileSync(file, "utf8").split(/\r?\n/).filter((l) => l !== "") : [];
+  const idx = lines.findIndex((l) => l.startsWith(`${key}=`));
+  if (idx >= 0) lines[idx] = `${key}=${value}`; else lines.push(`${key}=${value}`);
+  fs.writeFileSync(file, lines.join("\n") + "\n", { mode: 0o600 });
+  // mode 只在新建文件时生效，已有的文件也收紧成只有自己可读
+  fs.chmodSync(file, 0o600);
+}

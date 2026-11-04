@@ -2,7 +2,7 @@
 
 [English](./README.md) | 简体中文
 
-一条命令，给 Claude Code / OpenCode / OpenClaw / Hermes Agent / Cline / Kilo Code / Qwen Code / Continue / Aider / pi / VS Code Copilot Chat / Factory Droid 切换模型供应商。
+一条命令，给 Claude Code / OpenCode / OpenClaw / Hermes Agent / Cline / Kilo Code / Qwen Code / Continue / Aider / pi / VS Code Copilot Chat / Factory Droid / DeepSeek Harness 切换模型供应商。
 
 原理是直接写入各客户端自己的配置文件，不做任何代理或中转。
 
@@ -65,6 +65,7 @@ codesw use claude-code bumo.cc deepseek/deepseek-flash --key sk-xxx   # 新机�
 | `pi` | [pi](https://github.com/badlogic/pi-mono) | `~/.pi/agent/models.json` + `settings.json` |
 | `vscode` | [VS Code Copilot Chat](https://code.visualstudio.com/docs/copilot/customization/language-models)（Custom Endpoint，不用装插件） | VS Code 用户配置目录下的 `chatLanguageModels.json` |
 | `droid` | [Factory Droid](https://docs.factory.ai/cli/configuration/byok)（不用登录 Factory） | `~/.factory/settings.json` |
+| `dsh` | [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（CLI 与 Web 共用） | `~/.dsh/cordis.patch.yml` + `~/.dsh/.env` |
 
 Cline、Kilo Code、Qwen Code、Continue、Aider、pi、VS Code Copilot Chat、Factory Droid 只支持 OpenAI 兼容协议，codesw 会自动只列出提供 OpenAI 兼容端点的供应商。
 
