@@ -4,7 +4,7 @@ import * as os from "os";
 import * as yaml from "js-yaml";
 import { ProviderDef } from "../providers";
 import { t } from "../i18n";
-import { ApplyInput, CurrentConfig, readJson } from "./shared";
+import { ApplyInput, CurrentConfig, readJson, writeEnvKey } from "./shared";
 
 const DIR = path.join(os.homedir(), ".hermes");
 const CFG_FILE = path.join(DIR, "config.yaml");
@@ -44,16 +44,4 @@ export function currentHermes(): CurrentConfig | undefined {
   const cfg = readJson(CFG_FILE, (s) => yaml.load(s));
   if (!cfg.model?.default && !cfg.model?.base_url) return undefined;
   return { baseUrl: cfg.model?.base_url, model: cfg.model?.default };
-}
-
-function writeEnvKey(file: string, key: string, value: string): void {
-  let lines: string[] = [];
-  if (fs.existsSync(file)) {
-    lines = fs.readFileSync(file, "utf8").split(/\r?\n/);
-  }
-  const prefix = `${key}=`;
-  const idx = lines.findIndex((l) => l.startsWith(prefix));
-  const line = `${prefix}${value}`;
-  if (idx >= 0) lines[idx] = line; else lines.push(line);
-  fs.writeFileSync(file, lines.filter((l, i) => !(i === lines.length - 1 && l === "")).join("\n") + "\n", { mode: 0o600 });
 }
